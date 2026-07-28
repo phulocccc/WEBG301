@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>University Idea Portal</title>
+    <style>
+        /* --- CSS CƠ BẢN --- */
+        :root {
+            --primary-color: #0056b3;
+            --bg-color: #f4f7f6;
+            --text-main: #333333;
+            --text-muted: #666666;
+            --white: #ffffff;
+            --border-color: #dddddd;
+            --danger: #dc3545;
+            --warning: #ffc107;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); line-height: 1.6; }
+        header { background-color: var(--primary-color); color: var(--white); padding: 1rem 5%; display: flex; justify-content: space-between; align-items: center; }
+        
+        .btn-submit { background-color: var(--white); color: var(--primary-color); padding: 0.5rem 1rem; text-decoration: none; border-radius: 4px; font-weight: bold; cursor: pointer; border: none;}
+        .container { display: flex; flex-wrap: wrap; padding: 2rem 5%; gap: 2rem; }
+        
+        .sidebar { flex: 1 1 250px; background: var(--white); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); height: fit-content; }
+        .sidebar h3 { margin-bottom: 1rem; }
+        .filter-group { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; }
+        .filter-group button { padding: 0.5rem; text-align: left; background: none; border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; transition: background-color 0.2s; }
+        .filter-group button:hover, .filter-group button.active { background: #e9ecef; font-weight: bold; }
+
+        .main-content { flex: 3 1 600px; display: flex; flex-direction: column; gap: 1.5rem; }
+        .idea-card { background: var(--white); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .idea-header { display: flex; justify-content: space-between; margin-bottom: 1rem; }
+        .idea-meta { font-size: 0.85rem; color: var(--text-muted); }
+        .tag { background: #e9ecef; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.8rem; color: #495057; height: fit-content; }
+        
+        .pagination { display: flex; justify-content: center; gap: 0.5rem; margin-top: 1rem; }
+        .pagination button { padding: 0.5rem 1rem; border: 1px solid var(--border-color); background: var(--white); cursor: pointer; border-radius: 4px; }
+        .pagination button:hover:not(:disabled) { background: #e9ecef; }
+        .pagination button.active { background: var(--primary-color); color: white; }
+        .pagination button:disabled { cursor: not-allowed; opacity: 0.5; }
+
+        /* --- CSS CHO NOTIFICATIONS --- */
+        .notif-wrapper { position: relative; display: inline-block; }
+        .notif-badge { position: absolute; top: -5px; right: -5px; background: var(--danger); color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; font-weight: bold; display: none; }
+        .notif-dropdown { display: none; position: absolute; right: 0; top: 120%; width: 350px; background: white; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; overflow: hidden; color: var(--text-main); }
+        .notif-header { padding: 10px 15px; border-bottom: 1px solid #ddd; font-weight: bold; background: #f8f9fa; display: flex; justify-content: space-between; }
+        .notif-list { list-style: none; padding: 0; margin: 0; max-height: 350px; overflow-y: auto; }
+        .notif-item { padding: 12px 15px; border-bottom: 1px solid #eee; font-size: 0.9rem; cursor: pointer; transition: 0.2s; }
+        .notif-item:hover { background: #f1f3f5; }
+        .notif-unread { background: #e9f2ff; font-weight: bold; }
+        .notif-time { font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 5px; }
+
+        @media (max-width: 768px) {
+            .container { flex-direction: column; }
+            .sidebar { width: 100%; }
+            .notif-dropdown { width: 300px; right: -50px; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1 style="cursor: pointer;" onclick="window.location.href='index.html'">UniIdeas Portal</h1>
+        <div style="display: flex; gap: 10px; align-items: center;" id="header-actions">
+            
+            <div class="notif-wrapper" id="notifContainer">
+                <button id="btnNotifications" class="btn-submit" style="background-color: #e9ecef; color: #333;">
+                    🔔 Notifications
+                    <span id="notifBadge" class="notif-badge">0</span>
+                </button>
+                <div id="notifDropdown" class="notif-dropdown">
+                    <div class="notif-header">
+                        <span>Your Notifications</span>
+                        <span id="markAllRead" style="font-size: 0.8rem; color: var(--primary-color); cursor: pointer; font-weight: normal;">Đánh dấu đã đọc</span>
+                    </div>
+                    <ul id="notifList" class="notif-list">
+                        <li style="padding: 15px; text-align: center; color: #666;">Đang tải...</li>
+                    </ul>
+                </div>
+            </div>
+
+            <a href="submit-idea.html" class="btn-submit" id="btnSubmitIdea">+ Submit New Idea</a>
+            <button id="btnLogout" style="background-color: var(--danger); color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-weight: bold;"> LOG OUT </button>
+        </div>
+    </header>
+
+    <div class="container">
+        <aside class="sidebar">
+            <h3>Sort By</h3>
+            <div class="filter-group" id="sortGroup">
+                <button data-sort="popular">🔥 Most Popular</button>
+                <button data-sort="viewed">👁️ Most Viewed</button>
+                <button data-sort="latest" class="active">⏱️ Latest Ideas</button>
+                <button data-sort="comments">💬 Latest Comments</button>
+            </div>
+
+            <h3>Categories</h3>
+            <div class="filter-group" id="categoryGroup">
+                <button data-category="all" class="active">All Categories</button>
+                </div>
+        </aside>
+
+        <main class="main-content">
+            <div id="ideasContainer"></div>
+            <div class="pagination" id="paginationContainer"></div>
+        </main>
+    </div>
+
+<script>
+    let allIdeasFromServer = []; 
+    const itemsPerPage = 5;      
+    let currentPage = 1;
+    let currentSort = 'latest';
+    let currentCategory = 'all';
+    const API_BASE_URL = 'https://nontubercularly-nontextural-abdul.ngrok-free.dev/api';
+
+    // === KHỞI CHẠY KHI TẢI TRANG ===
+    document.addEventListener('DOMContentLoaded', () => {
+        // 1. Kiểm tra Deadline
+        const submitBtn = document.getElementById('btnSubmitIdea');
+        const closureDate = new Date('2026-04-30T23:59:59'); 
+        
+        if (new Date() > closureDate && submitBtn) {
+            submitBtn.style.backgroundColor = '#cccccc'; 
+            submitBtn.style.color = '#666666';
+            submitBtn.style.pointerEvents = 'none'; 
+            submitBtn.innerHTML = '🔒 Submissions Closed'; 
+        }
+
+        // 2. LOGIC HIỂN THỊ NÚT ADMIN
+        const headerDiv = document.getElementById('header-actions');
+        const rawRole = localStorage.getItem('userRole') || '';
+        const userRole = rawRole.toLowerCase(); 
+
+        if (
+            userRole === 'admin' || 
+            userRole.includes('qa') || 
+            userRole === '1' || 
+            userRole === '3' || 
+            userRole === '4'
+        ) {
+            const adminBtn = document.createElement('button');
+            adminBtn.className = 'btn-submit';
+            adminBtn.style.backgroundColor = '#fd7e14'; 
+            adminBtn.style.color = 'white';
+            adminBtn.style.marginRight = '10px';
+            adminBtn.innerText = '⚙️ Admin Dashboard';
+            adminBtn.onclick = function() { window.location.href = 'admin-dashboard.html'; };
+            headerDiv.prepend(adminBtn);
+        }
+
+        setupSortFilters(); 
+        fetchCategoriesForSidebar(); // Lấy danh mục động cho bộ lọc
+        fetchIdeasFromBackend();
+        setupNotifications(); 
+    });
+
+    // === LẤY DANH MỤC ĐỘNG CHO THANH SIDEBAR TỪ API (Đã sửa lỗi) ===
+async function fetchCategoriesForSidebar() {
+    const token = localStorage.getItem('userToken');
+    const categoryGroup = document.getElementById('categoryGroup');
+    
+    try {
+        // CHÚ Ý: Đã đổi thành gọi route admin/categories giống trang Submit lúc nãy
+        const response = await fetch(`${API_BASE_URL}/categories`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            }
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            
+            // Xử lý trích xuất mảng dữ liệu siêu an toàn 
+            let categories = [];
+            if (Array.isArray(result)) {
+                categories = result;
+            } else if (result && Array.isArray(result.data)) {
+                categories = result.data;
+            } else if (result && result.data && Array.isArray(result.data.data)) {
+                categories = result.data.data;
+            }
+            
+            // Giữ lại nút All, sau đó render tiếp các nút từ API
+            categoryGroup.innerHTML = `<button data-category="all" class="active">All Categories</button>`;
+            
+            categories.forEach(cat => {
+                categoryGroup.innerHTML += `<button data-category="${cat.id}">${cat.name}</button>`;
+            });
+
+            // Chạy hàm gắn sự kiện click cho các nút Category mới vẽ ra
+            setupCategoryFilters();
+        } else {
+            console.error("Lỗi tải category API. Code:", response.status);
+            categoryGroup.innerHTML = `<button data-category="all" class="active">All Categories (Lỗi tải)</button>`;
+        }
+    } catch (error) {
+        console.error("Lỗi tải danh mục sidebar:", error);
+    }
+}
+
+    // Gắn sự kiện filter cho nhóm Sort By
+    function setupSortFilters() {
+        document.querySelectorAll('#sortGroup button').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelector('#sortGroup .active').classList.remove('active');
+                e.target.classList.add('active');
+                currentSort = e.target.getAttribute('data-sort');
+                currentPage = 1; 
+                fetchIdeasFromBackend(); 
+            });
+        });
+    }
+
+    // Gắn sự kiện filter cho nhóm Category (Chạy sau khi đã load API)
+   function setupCategoryFilters() {
+        document.querySelectorAll('#categoryGroup button').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelector('#categoryGroup .active')?.classList.remove('active');
+                e.currentTarget.classList.add('active'); // Đổi thành currentTarget
+                currentCategory = e.currentTarget.getAttribute('data-category');
+                currentPage = 1; 
+                fetchIdeasFromBackend();
+            });
+        });
+    }
+
+    // === LOGIC THÔNG BÁO (NOTIFICATIONS) ===
+    function setupNotifications() {
+        const btnNotif = document.getElementById('btnNotifications');
+        const notifDropdown = document.getElementById('notifDropdown');
+        const markAllRead = document.getElementById('markAllRead');
+
+        btnNotif.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isShowing = notifDropdown.style.display === 'block';
+            notifDropdown.style.display = isShowing ? 'none' : 'block';
+            if (!isShowing) {
+                fetchNotifications(); 
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!notifDropdown.contains(e.target) && e.target !== btnNotif) {
+                notifDropdown.style.display = 'none';
+            }
+        });
+
+        markAllRead.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            alert("Mark all as read (Cần kết nối API Backend)");
+            fetchNotifications(); 
+        });
+
+        fetchNotifications();
+    }
+
+    async function fetchNotifications() {
+        const token = localStorage.getItem('userToken');
+        if (!token) return;
+
+        const notifList = document.getElementById('notifList');
+        const badge = document.getElementById('notifBadge');
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/notifications`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const notifications = data.data || data; 
+                
+                notifList.innerHTML = '';
+                let unreadCount = 0;
+
+                if (notifications.length === 0) {
+                    notifList.innerHTML = '<li style="padding: 15px; text-align: center; color: #666;">Bạn không có thông báo nào.</li>';
+                } else {
+                    notifications.forEach(notif => {
+                        if (!notif.is_read) unreadCount++;
+                        
+                        let icon = '🔔';
+                        if (notif.type === 'comment') icon = '💬';
+                        if (notif.type === 'like') icon = '👍';
+                        if (notif.type === 'dislike') icon = '👎';
+                        if (notif.type === 'new_idea') icon = '📝'; 
+
+                        notifList.innerHTML += `
+                            <li class="notif-item ${notif.is_read ? '' : 'notif-unread'}" onclick="window.location.href='idea-detail.html?id=${notif.idea_id}'">
+                                <div>${icon} ${notif.message}</div>
+                                <span class="notif-time">${new Date(notif.created_at).toLocaleString()}</span>
+                            </li>
+                        `;
+                    });
+                }
+
+                if (unreadCount > 0) {
+                    badge.innerText = unreadCount;
+                    badge.style.display = 'block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            } else {
+                showMockNotifications();
+            }
+        } catch (error) {
+            console.error("Lỗi Notifications:", error);
+            showMockNotifications(); 
+        }
+    }
+
+    function showMockNotifications() {
+        const notifList = document.getElementById('notifList');
+        const badge = document.getElementById('notifBadge');
+        badge.innerText = "2";
+        badge.style.display = 'block';
+        
+        const role = localStorage.getItem('userRole') || '2';
+        let extraMock = '';
+        
+        if (role == '3') {
+            extraMock = `
+                <li class="notif-item notif-unread">
+                    <div>📝 <strong>[QA Coordinator]</strong> Nguyễn Văn A vừa đăng một ý tưởng mới trong khoa của bạn.</div>
+                    <span class="notif-time">Vừa xong</span>
+                </li>`;
+        }
+
+        notifList.innerHTML = `
+            ${extraMock}
+            <li class="notif-item notif-unread">
+                <div>💬 Trần Thị B đã bình luận vào ý tưởng "Nâng cấp Wifi" của bạn.</div>
+                <span class="notif-time">10 phút trước</span>
+            </li>
+            <li class="notif-item">
+                <div>👍 Ai đó đã Like ý tưởng "Cải thiện thực đơn căn tin" của bạn.</div>
+                <span class="notif-time">2 giờ trước</span>
+            </li>
+            <li style="padding: 10px; text-align: center; font-size: 0.8rem; color: #dc3545;">
+                * Đây là dữ liệu mẫu. Backend cần tạo API /api/notifications
+            </li>
+        `;
+    }
+
+   // === CÁC HÀM XỬ LÝ IDEAS ===
+    async function fetchIdeasFromBackend() {
+        const ideasContainer = document.getElementById('ideasContainer');
+        const paginationContainer = document.getElementById('paginationContainer');
+        const token = localStorage.getItem('userToken'); 
+
+        if (!token) return;
+
+        if (allIdeasFromServer.length === 0) {
+            ideasContainer.innerHTML = '<p style="text-align:center;">Đang tải dữ liệu...</p>';
+            paginationContainer.innerHTML = '';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/ideas`, {
+                    method: 'GET', 
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                        'ngrok-skip-browser-warning': 'true'
+                    }
+                });
+
+                if (!response.ok) throw new Error('Lỗi Server');
+                const result = await response.json();
+                allIdeasFromServer = result.data?.data || result.data || result; 
+            } catch (error) {
+                ideasContainer.innerHTML = '<p style="color:red; text-align:center;">Lỗi kết nối API Backend!</p>';
+                return;
+            }
+        }
+
+        // 🔥 BƯỚC 1: LỌC THEO CATEGORY (Bao trọn mọi định dạng Backend)
+        let filteredIdeas = allIdeasFromServer;
+        if (currentCategory !== 'all') {
+            filteredIdeas = allIdeasFromServer.filter(idea => {
+                // TH1: Bài viết có nhiều danh mục (Mảng categories)
+                if (idea.categories && Array.isArray(idea.categories)) {
+                    return idea.categories.some(cat => cat.id.toString() === currentCategory.toString());
+                }
+                // TH2: Bài viết lưu thẳng category_id
+                if (idea.category_id && idea.category_id.toString() === currentCategory.toString()) {
+                    return true;
+                }
+                // TH3: Bài viết trả về 1 object category
+                if (idea.category && idea.category.id && idea.category.id.toString() === currentCategory.toString()) {
+                    return true;
+                }
+                return false;
+            });
+        }
+
+        filteredIdeas.sort((a, b) => {
+            if (currentSort === 'popular') {
+                const scoreA = (a.views_count || 0) + (a.likes_count || 0) + (a.comments_count || 0);
+                const scoreB = (b.views_count || 0) + (b.likes_count || 0) + (b.comments_count || 0);
+                return scoreB - scoreA;
+            } 
+            else if (currentSort === 'viewed') { return (b.views_count || 0) - (a.views_count || 0); }
+            else if (currentSort === 'comments') {
+                const dateA = new Date(a.updated_at || a.created_at).getTime();
+                const dateB = new Date(b.updated_at || b.created_at).getTime();
+                if (dateB === dateA) return (b.comments_count || 0) - (a.comments_count || 0);
+                return dateB - dateA;
+            }
+            else {
+                const dateA = new Date(a.created_at || 0).getTime();
+                const dateB = new Date(b.created_at || 0).getTime();
+                return dateB - dateA;
+            }
+        });
+
+        const totalItems = filteredIdeas.length;
+        const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+        if (currentPage > totalPages) currentPage = 1;
+
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const ideasToShow = filteredIdeas.slice(startIndex, endIndex);
+
+        ideasContainer.innerHTML = ''; 
+        paginationContainer.innerHTML = '';
+
+        if (ideasToShow.length === 0) {
+            ideasContainer.innerHTML = '<p style="text-align:center; padding: 2rem;">Chưa có ý tưởng nào trong mục này!</p>';
+            return;
+        }
+
+        ideasToShow.forEach(idea => {
+            const article = document.createElement('article');
+            article.classList.add('idea-card');
+            
+            let attachmentHTML = '';
+            // Đã cập nhật tự động lấy domain
+            const backendDomain = API_BASE_URL.replace('/api', '');
+
+            if (idea.file_path) {
+                let cleanPath = idea.file_path.replace(/\\/g, '/');
+                if (!cleanPath.startsWith('/')) { cleanPath = '/' + cleanPath; }
+                attachmentHTML = `
+                    <div style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px; border: 1px dashed var(--border-color);">
+                        📎 <strong>Tài liệu đính kèm:</strong> <a href="${backendDomain + cleanPath}" target="_blank" style="color: var(--primary-color); text-decoration: none; font-weight: bold;">Xem / Tải xuống</a>
+                    </div>`;
+            } 
+            else if (idea.attachments && idea.attachments.length > 0) {
+                let filesLinks = '';
+                idea.attachments.forEach(file => {
+                    let cleanPath = file.file_path.replace(/\\/g, '/');
+                    if (!cleanPath.startsWith('/')) { cleanPath = '/' + cleanPath; }
+                    filesLinks += `<a href="${backendDomain + cleanPath}" target="_blank" style="color: var(--primary-color); text-decoration: none; font-weight: bold; margin-right: 15px;">📄 Xem / Tải xuống</a>`;
+                });
+                attachmentHTML = `
+                    <div style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px; border: 1px dashed var(--border-color);">
+                        📎 <strong>Tài liệu đính kèm:</strong> ${filesLinks}
+                    </div>`;
+            }
+
+            // 🔥 ĐÃ SỬA LẠI: Chỉ hiển thị đúng 1 danh mục (Loại bỏ các danh mục thừa do Backend gửi)
+            let categoryDisplay = 'Chưa phân loại';
+            if (idea.categories && idea.categories.length > 0) {
+                if (currentCategory !== 'all') {
+                    // Nếu user đang bấm lọc ở Sidebar, ưu tiên hiển thị đúng cái tên đang lọc
+                    const matchedCat = idea.categories.find(cat => cat.id.toString() === currentCategory.toString());
+                    categoryDisplay = matchedCat ? matchedCat.name : idea.categories[0].name;
+                } else {
+                    // Nếu ở mục All Categories, chỉ hiện cái tag đầu tiên của bài viết
+                    categoryDisplay = idea.categories[0].name;
+                }
+            } else if (idea.category && idea.category.name) {
+                categoryDisplay = idea.category.name;
+            }
+
+            article.innerHTML = `
+               <div class="idea-header">
+                    <div>
+                        <h2><a href="idea-detail.html?id=${idea.id}" style="text-decoration: none; color: var(--primary-color); transition: 0.2s;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${idea.title}</a></h2>
+                        <div class="idea-meta">
+                            By ${idea.is_anonymous ? '🕵️ Anonymous' : (idea.user?.name || 'Unknown')} 
+                            <span style="margin: 0 5px;">|</span>
+                            <strong style="color: #0056b3;">Khoa: ${idea.is_anonymous ? 'Bí mật' : (idea.user?.department?.name || 'Chưa rõ')}</strong>
+                            <span style="margin: 0 5px;">|</span>
+                            Date: ${new Date(idea.created_at || Date.now()).toLocaleDateString()}
+                        </div>
+                    </div>
+                    <span class="tag" style="background: #e9ecef; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.8rem; color: #495057;">
+                        ${categoryDisplay}
+                    </span>
+                </div>
+                
+                <p>${idea.content}</p>
+                ${attachmentHTML}
+
+                <div style="display: flex; gap: 15px; align-items: center; margin-top: 15px;">
+                    <span style="color: #28a745; font-weight: bold;">👍 ${idea.likes_count || 0}</span>
+                    <span style="color: #dc3545; font-weight: bold;">👎 ${idea.dislikes_count || 0}</span>
+                    <span style="color: #0056b3; font-weight: bold;">💬 ${idea.comments_count || 0} Comments</span>
+                    <span style="color: #666; font-weight: bold;">👁️ ${idea.views_count || 0} Views</span>
+                </div>
+            `;
+            ideasContainer.appendChild(article);
+        });
+
+        if (totalPages > 1) {
+            const prevBtn = document.createElement('button');
+            prevBtn.innerText = 'Previous';
+            prevBtn.disabled = (currentPage === 1);
+            prevBtn.onclick = () => { currentPage--; fetchIdeasFromBackend(); };
+            paginationContainer.appendChild(prevBtn);
+
+            for (let i = 1; i <= totalPages; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.innerText = i;
+                if (i === currentPage) pageBtn.classList.add('active');
+                pageBtn.onclick = () => { currentPage = i; fetchIdeasFromBackend(); };
+                paginationContainer.appendChild(pageBtn);
+            }
+
+            const nextBtn = document.createElement('button');
+            nextBtn.innerText = 'Next';
+            nextBtn.disabled = (currentPage === totalPages);
+            nextBtn.onclick = () => { currentPage++; fetchIdeasFromBackend(); };
+            paginationContainer.appendChild(nextBtn);
+        }
+    }
+</script>
+<script src="auth.js"></script>
+</body>
+</html>

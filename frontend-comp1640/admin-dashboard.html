@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - UniIdeas</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* --- CSS --- */
+        :root {
+            --primary-color: #0056b3;
+            --sidebar-bg: #2c3e50;
+            --bg-color: #f4f7f6;
+            --text-main: #333333;
+            --text-muted: #666666;
+            --white: #ffffff;
+            --border-color: #dddddd;
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #ffc107;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); display: flex; min-height: 100vh; }
+        
+        .sidebar { width: 250px; background-color: var(--sidebar-bg); color: var(--white); display: flex; flex-direction: column; }
+        .sidebar-header { padding: 1.5rem; text-align: center; border-bottom: 1px solid #34495e; font-weight: bold; font-size: 1.2rem; }
+        .sidebar-menu { list-style: none; padding: 1rem 0; flex-grow: 1; }
+        .sidebar-menu li a { display: block; padding: 1rem 1.5rem; color: #ecf0f1; text-decoration: none; border-left: 4px solid transparent; }
+        .sidebar-menu li a:hover, .sidebar-menu li a.active { background-color: #34495e; border-left-color: var(--primary-color); }
+        
+        .main-content { flex-grow: 1; padding: 2rem; overflow-y: auto; }
+        .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .btn-download { background: var(--success); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 4px; cursor: pointer; font-weight: bold; text-decoration: none; transition: 0.2s;}
+        .btn-download:hover { filter: brightness(0.9); }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .stat-card { background: var(--white); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-align: center; }
+        .stat-card h3 { color: var(--text-muted); font-size: 1rem; margin-bottom: 0.5rem; }
+        .stat-card .number { font-size: 2rem; font-weight: bold; color: var(--primary-color); }
+
+        .section-card { background: var(--white); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 2rem; }
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .btn-add { background: var(--primary-color); color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-weight: bold;}
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+        th { background-color: #f8f9fa; font-weight: bold; }
+        
+        .btn-action { padding: 0.4rem 0.8rem; border: none; border-radius: 4px; cursor: pointer; color: white; font-size: 0.85rem; font-weight: bold;}
+        .btn-delete { background-color: var(--danger); }
+        .btn-delete:disabled { background-color: #cccccc; cursor: not-allowed; } 
+        
+        /* --- MODAL (POPUP) CSS --- */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: var(--white); padding: 2rem; border-radius: 8px; width: 450px; max-width: 90%; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .modal-content h3 { margin-bottom: 1.5rem; color: var(--primary-color); border-bottom: 2px solid var(--bg-color); padding-bottom: 0.5rem; }
+        .modal-content label { display: block; margin-bottom: 0.5rem; font-weight: bold; font-size: 0.9rem; }
+        .modal-content input, .modal-content select { width: 100%; padding: 0.6rem; margin-bottom: 1.2rem; border: 1px solid var(--border-color); border-radius: 4px; font-size: 1rem; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem; }
+
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .sidebar { width: 100%; height: auto; }
+            .stats-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <span style="cursor:pointer;" onclick="window.location.href='index.html'">🔙 UniIdeas Admin</span>
+        </div>
+        <ul class="sidebar-menu">
+            <li><a href="#" class="active">📊 Dashboard & Reports</a></li>
+        </ul>
+        <div style="padding: 1rem;">
+            <button id="btnLogout" style="width: 100%; background: var(--danger); color: white; border: none; padding: 0.8rem; border-radius: 4px; cursor: pointer; font-weight: bold;">LOG OUT</button>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        
+        <div class="header-top">
+            <h1>Overview & Statistics</h1>
+            <div style="display: flex; gap: 1rem;">
+                <button class="btn-download" onclick="downloadExport('csv')">⬇️ Download Data (CSV)</button>
+                <button class="btn-download" style="background: var(--warning); color: #333;" onclick="downloadExport('zip')">⬇️ Download Files (ZIP)</button>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Ideas</h3>
+                <div class="number" id="stat-ideas">⏳</div>
+            </div>
+            <div class="stat-card">
+                <h3>Total Comments</h3>
+                <div class="number" id="stat-comments">⏳</div>
+            </div>
+            <div class="stat-card">
+                <h3>Active Contributors</h3>
+                <div class="number" id="stat-users">⏳</div>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <div class="section-header">
+                <h2>Contribution by Department (Tỷ lệ đóng góp theo khoa)</h2>
+            </div>
+            <div style="height: 350px; display: flex; justify-content: center; position: relative; width: 100%;">
+                <canvas id="departmentChart"></canvas>
+            </div>
+        </div>
+
+        <div class="section-card" id="userManagementSection">
+            <div class="section-header">
+                <h2>User Management (Quản lý tài khoản)</h2>
+                <button class="btn-add" onclick="openUserModal()">+ Add New User</button>
+            </div>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Department</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-table-body">
+                        <tr><td colspan="5" style="text-align: center;">Đang tải danh sách tài khoản...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="userModal" class="modal">
+            <div class="modal-content">
+                <h3 id="modalTitle">Add New User</h3>
+                <input type="hidden" id="userId">
+                
+                <label>Full Name:</label>
+                <input type="text" id="userName" placeholder="Nguyễn Văn A">
+                
+                <label>Email (Dùng để đăng nhập):</label>
+                <input type="email" id="userEmail" placeholder="staff@univ.edu">
+                
+                <label>Password (<span id="pwdHint" style="font-weight:normal; color:red;">Bắt buộc</span>):</label>
+                <input type="password" id="userPassword" placeholder="Nhập mật khẩu...">
+                
+                <label>Role (Phân quyền):</label>
+                <select id="userRole">
+                    <option value="2">Staff (Nhân viên)</option>
+                    <option value="3">QA Coordinator</option>
+                    <option value="4">QA Manager</option>
+                    <option value="1">Admin</option>
+                </select>
+
+                <label>Department (Khoa/Phòng):</label>
+                <select id="userDept">
+                    <option value="">-- Không thuộc khoa nào --</option>
+                    <option value="1">IT Department</option>
+                    <option value="2">Human Resources</option>
+                    <option value="3">Business Analysis</option>
+                </select>
+
+                <div class="modal-actions">
+                    <button class="btn-action" style="background: var(--text-muted);" onclick="closeUserModal()">Cancel</button>
+                    <button class="btn-action btn-add" id="btnSaveUser" onclick="saveUser()">Save User</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="ideaEditModal" class="modal">
+            <div class="modal-content" style="width: 600px;">
+                <h3>Edit Idea (Kiểm duyệt)</h3>
+                <input type="hidden" id="editIdeaId">
+                
+                <label>Title (Tiêu đề):</label>
+                <input type="text" id="editIdeaTitle" placeholder="Nhập tiêu đề...">
+                
+                <label>Content (Nội dung chi tiết):</label>
+                <textarea id="editIdeaContent" rows="6" style="width: 100%; padding: 0.6rem; margin-bottom: 1.2rem; border: 1px solid var(--border-color); border-radius: 4px; font-size: 1rem; resize: vertical;"></textarea>
+                
+                <label>Replace Attachment (Thay thế/Cập nhật file đính kèm):</label>
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">Bỏ trống nếu không muốn thay đổi file hiện tại.</div>
+                <input type="file" id="editIdeaFile" style="margin-bottom: 1.5rem;">
+
+                <div class="modal-actions">
+                    <button class="btn-action" style="background: var(--text-muted);" onclick="closeIdeaModal()">Cancel</button>
+                    <button class="btn-action btn-add" id="btnSaveIdeaAdmin" onclick="saveIdeaAdmin()">Save Changes</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <div class="section-header">
+                <h2>Category Management</h2>
+                <button class="btn-add" onclick="addNewCategory()">+ Add New Category</button>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Category Name</th>
+                        <th>Usage Count (Ideas)</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="categories-table-body">
+                    <tr><td colspan="4" style="text-align: center;">Đang tải danh mục...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section-card">
+            <div class="section-header">
+                <h2>Exception Reports</h2>
+            </div>
+
+            <h3 style="margin: 1rem 0 0.5rem 0; font-size: 1.1rem; color: var(--danger);">⚠️ Ideas Without Comments (Ý tưởng không có bình luận)</h3>
+            <table style="margin-bottom: 2rem;">
+                <thead>
+                    <tr>
+                        <th>Idea Title</th>
+                        <th>Author</th>
+                        <th>Date Posted</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="no-comments-table-body">
+                    <tr><td colspan="4" style="text-align: center;">Đang tải dữ liệu...</td></tr>
+                </tbody>
+            </table>
+
+            <h3 style="margin: 1rem 0 0.5rem 0; font-size: 1.1rem; color: var(--warning);">🕵️ Anonymous Ideas (Ý tưởng ẩn danh)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Idea Title</th>
+                        <th>Date Posted</th>
+                        <th>Real Author (Admin View)</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="anonymous-table-body">
+                    <tr><td colspan="4" style="text-align: center;">Đang tải dữ liệu...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+<script src="auth.js"></script>
+
+<script>
+    const API_ADMIN_URL = 'https://nontubercularly-nontextural-abdul.ngrok-free.dev/api/admin';
+    const token = localStorage.getItem('userToken');
+
+    // === KHỞI CHẠY LÚC TẢI TRANG ===
+    // === KHỞI CHẠY LÚC TẢI TRANG ===
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. KIỂM TRA ROLE ĐỂ ẨN/HIỆN CHỨC NĂNG
+    const userRole = localStorage.getItem('userRole'); 
+    
+    // Giả sử Role Admin có ID là '1' hoặc tên là 'admin'
+    // Nếu role KHÔNG PHẢI là Admin, ta ẩn phần quản lý User đi
+    if (userRole !== '1' && userRole?.toLowerCase() !== 'admin') {
+        const userSection = document.getElementById('userManagementSection');
+        if (userSection) {
+            userSection.style.display = 'none'; // Ẩn hoàn toàn khỏi giao diện
+        }
+    } else {
+        // Chỉ tải dữ liệu User nếu đúng là Admin
+        fetchUsers();
+    }
+
+    // Các hàm tải dữ liệu khác (dành cho mọi role được phép vào dashboard)
+    fetchStatistics();
+    fetchChartData(); 
+    fetchCategories();
+    fetchExceptionReports(); 
+        
+});
+
+    // ==========================================
+    // 1. TẢI THỐNG KÊ SỐ LƯỢNG (STATISTICS)
+    // ==========================================
+    async function fetchStatistics() {
+        try {
+            const res = await fetch(`${API_ADMIN_URL}/statistics`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' }
+            });
+            if (res.ok) {
+                const result = await res.json();
+                const stats = result.data || result; 
+                
+                document.getElementById('stat-ideas').innerText = stats.total_ideas || 0;
+                document.getElementById('stat-comments').innerText = stats.total_comments || 0;
+                document.getElementById('stat-users').innerText = stats.total_contributors || 0;
+            }
+        } catch (error) { console.error("Lỗi tải thống kê", error); }
+    }
+
+    // ==========================================
+    // 2. TẢI VÀ VẼ BIỂU ĐỒ (CHART)
+    // ==========================================
+    async function fetchChartData() {
+        try {
+            const res = await fetch(`${API_ADMIN_URL}/chart-data`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' }
+            });
+            if (res.ok) {
+                const result = await res.json();
+                const chartLabels = result.labels || [];
+                const chartValues = result.data || [];
+
+                const ctx = document.getElementById('departmentChart').getContext('2d');
+                if (window.myPieChart) window.myPieChart.destroy();
+
+                window.myPieChart = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: chartLabels,
+                        datasets: [{
+                            data: chartValues,
+                            backgroundColor: ['#0056b3', '#28a745', '#ffc107', '#dc3545', '#17a2b8', '#6f42c1']
+                        }]
+                    },
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'right' } }
+                    }
+                });
+            }
+        } catch (error) { console.error("Lỗi tải dữ liệu biểu đồ", error); }
+    }
+
+    // ==========================================
+    // 3. QUẢN LÝ NGƯỜI DÙNG (USERS CRUD)
+    // ==========================================
+    let usersList = []; 
+
+    async function fetchUsers() {
+        try {
+            const res = await fetch(`${API_ADMIN_URL}/users`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' }
+            });
+            if (res.ok) {
+                const result = await res.json();
+                usersList = Array.isArray(result) ? result : (result.data || []);
+                
+                const tbody = document.getElementById('users-table-body');
+                tbody.innerHTML = '';
+                
+                usersList.forEach(user => {
+                    let roleName = 'Staff';
+                    if (user.role_id == 1) roleName = 'Admin';
+                    else if (user.role_id == 2) roleName = 'Staff';
+                    else if (user.role_id == 3) roleName = 'QA Coordinator';
+                    else if (user.role_id == 4) roleName = 'QA Manager';
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><strong>${user.name}</strong></td>
+                            <td>${user.email}</td>
+                            <td><span style="background: #e9ecef; padding: 2px 8px; border-radius: 12px; font-size: 0.85rem; font-weight: bold;">${roleName}</span></td>
+                            <td>${user.department?.name || 'N/A'}</td>
+                            <td>
+                                <button class="btn-action" style="background: var(--warning); color: #333; margin-right: 5px;" onclick="openUserModal(${user.id})">Edit</button>
+                                <button class="btn-action btn-delete" onclick="deleteUser(${user.id}, '${user.name}')">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+        } catch (error) { console.error("Lỗi tải danh sách users", error); }
+    }
+
+    function openUserModal(userId = null) {
+        const modal = document.getElementById('userModal');
+        const title = document.getElementById('modalTitle');
+        const pwdHint = document.getElementById('pwdHint');
+        
+        document.getElementById('userId').value = '';
+        document.getElementById('userName').value = '';
+        document.getElementById('userEmail').value = '';
+        document.getElementById('userPassword').value = '';
+        document.getElementById('userRole').value = '2'; // Default Staff
+        document.getElementById('userDept').value = '1';
+
+        if (userId) {
+            title.innerText = 'Edit User Details';
+            pwdHint.innerText = 'Bỏ trống nếu không muốn đổi';
+            pwdHint.style.color = '#666';
+            
+            const user = usersList.find(u => u.id === userId);
+            if (user) {
+                document.getElementById('userId').value = user.id;
+                document.getElementById('userName').value = user.name;
+                document.getElementById('userEmail').value = user.email;
+                if (user.role_id) document.getElementById('userRole').value = user.role_id;
+                if (user.department_id) document.getElementById('userDept').value = user.department_id;
+            }
+        } else {
+            title.innerText = 'Add New User';
+            pwdHint.innerText = 'Bắt buộc';
+            pwdHint.style.color = 'red';
+        }
+        modal.style.display = 'flex';
+    }
+
+    function closeUserModal() {
+        document.getElementById('userModal').style.display = 'none';
+    }
+
+    async function saveUser() {
+        const id = document.getElementById('userId').value;
+        const name = document.getElementById('userName').value;
+        const email = document.getElementById('userEmail').value;
+        const password = document.getElementById('userPassword').value;
+        const roleValue = document.getElementById('userRole').value; 
+        const department_id = document.getElementById('userDept').value;
+
+        if (!name || !email) { alert("Vui lòng điền đủ Tên và Email!"); return; }
+        if (!id && !password) { alert("Thêm người dùng mới phải có mật khẩu!"); return; }
+
+        const payload = { name, email, role: roleValue, department_id }; 
+        if (password) payload.password = password;
+
+        const method = id ? 'PUT' : 'POST'; 
+        const url = id ? `${API_ADMIN_URL}/users/${id}` : `${API_ADMIN_URL}/users`;
+
+        const btn = document.getElementById('btnSaveUser');
+        btn.innerText = 'Đang lưu...'; btn.disabled = true;
+
+        try {
+            const res = await fetch(url, {
+                method: method,
+                headers: { 
+                    'Authorization': `Bearer ${token}`, 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'ngrok-skip-browser-warning': 'true'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                alert(id ? "✅ Cập nhật thành công!" : "✅ Thêm người dùng thành công!");
+                closeUserModal();
+                fetchUsers(); 
+            } else {
+                const data = await res.json();
+                alert(`❌ Lỗi: ${data.message || 'Email có thể bị trùng hoặc dữ liệu sai!'}`);
+            }
+        } catch (error) { alert("Lỗi kết nối mạng!"); } 
+        finally { btn.innerText = 'Save User'; btn.disabled = false; }
+    }
+
+    async function deleteUser(id, name) {
+        if (!confirm(`⚠️ Bạn có chắc chắn muốn xóa tài khoản "${name}" vĩnh viễn không?`)) return;
+        try {
+            const res = await fetch(`${API_ADMIN_URL}/users/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' }
+            });
+            if (res.ok) {
+                alert("✅ Đã xóa tài khoản!");
+                fetchUsers(); 
+            } else {
+                alert("❌ Lỗi: Không thể xóa tài khoản này.");
+            }
+        } catch (error) { alert("Lỗi kết nối mạng!"); }
+    }
+
+   // ==========================================
+    // 4. QUẢN LÝ DANH MỤC (CATEGORIES)
+    // ==========================================
+    async function fetchCategories() {
+        const tbody = document.getElementById('categories-table-body');
+        
+        try {
+            // 🔥 ĐÃ SỬA: Loại bỏ chữ /admin ra khỏi đường dẫn API giống hệt trang chủ
+            const baseUrl = API_ADMIN_URL.replace('/admin', ''); 
+            
+            const res = await fetch(`${baseUrl}/categories`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' }
+            });
+            
+            if (res.ok) {
+                const result = await res.json();
+                
+                // Trích xuất mảng dữ liệu an toàn
+                let categories = [];
+                if (Array.isArray(result)) {
+                    categories = result;
+                } else if (result && Array.isArray(result.data)) {
+                    categories = result.data;
+                } else if (result && result.data && Array.isArray(result.data.data)) {
+                    categories = result.data.data;
+                }
+
+                tbody.innerHTML = '';
+                
+                if (categories.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Chưa có danh mục nào.</td></tr>';
+                    return;
+                }
+
+                categories.forEach(cat => {
+                    const usageCount = cat.ideas_count || 0;
+                    const canDelete = usageCount === 0;
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><strong>${cat.name}</strong></td>
+                            <td>${usageCount} ideas</td>
+                            <td>${canDelete ? 'Not Used' : '<span style="color:green">In Use</span>'}</td>
+                            <td>
+                                <button class="btn-action btn-delete" 
+                                    ${!canDelete ? 'disabled' : ''} onclick="deleteCategory(${cat.id})">Delete
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } else {
+                // 🔥 NÂNG CẤP: Nếu API lỗi, báo đỏ ra màn hình luôn để dễ bắt đền Backend
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: red; font-weight: bold;">❌ Lỗi tải dữ liệu (Mã lỗi: ${res.status}). Vui lòng check lại API Backend!</td></tr>`;
+            }
+        } catch (error) { 
+            console.error("Lỗi tải danh mục", error); 
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: red; font-weight: bold;">❌ Lỗi kết nối mạng hoặc ngrok!</td></tr>';
+        }
+    }
+
+    async function addNewCategory() {
+        const catName = prompt("Nhập tên danh mục mới:");
+        if (!catName || catName.trim() === '') return;
+
+        try {
+            const res = await fetch(`${API_ADMIN_URL}/categories`, {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${token}`, 
+                    'Content-Type': 'application/json',
+                    'ngrok-skip-browser-warning': 'true'
+                },
+                body: JSON.stringify({ name: catName })
+            });
+            if (res.ok) {
+                alert("✅ Thêm danh mục thành công!");
+                fetchCategories(); 
+            } else { alert("❌ Thêm thất bại! Tên danh mục có thể bị trùng."); }
+        } catch (error) { alert("Lỗi kết nối mạng!"); }
+    }
+
+    async function deleteCategory(id) {
+        if (!confirm("⚠️ Bạn có chắc chắn muốn xóa danh mục này không?")) return;
+        try {
+            const res = await fetch(`${API_ADMIN_URL}/categories/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' }
+            });
+            if (res.ok) {
+                alert("✅ Xóa danh mục thành công!");
+                fetchCategories(); 
+            } else { alert("❌ Không thể xóa danh mục này!"); }
+        } catch (error) { alert("Lỗi kết nối mạng!"); }
+    }
+
+    // ==========================================
+    // 5. BÁO CÁO NGOẠI LỆ (EXCEPTION REPORTS)
+    // ==========================================
+    let exceptionIdeasData = []; // Mảng lưu trữ tạm để khi bấm Edit sẽ có data điền vào form
+
+    async function fetchExceptionReports() {
+        try {
+            exceptionIdeasData = []; // Reset mảng mỗi lần tải
+            
+            const tbodyNoCmt = document.getElementById('no-comments-table-body');
+            const tbodyAnon = document.getElementById('anonymous-table-body');
+            
+            tbodyNoCmt.innerHTML = '<tr><td colspan="4" style="text-align: center;">Đang tải dữ liệu...</td></tr>';
+            tbodyAnon.innerHTML = '<tr><td colspan="4" style="text-align: center;">Đang tải dữ liệu...</td></tr>';
+
+            // --- 1. LẤY BÁO CÁO: IDEAS WITHOUT COMMENTS ---
+            const resNoCmt = await fetch(`${API_ADMIN_URL}/exceptions/no-comments`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' }
+            });
+            if (resNoCmt.ok) {
+                const result = await resNoCmt.json();
+                const ideasNoCmt = Array.isArray(result) ? result : (result.data || []);
+                exceptionIdeasData.push(...ideasNoCmt); // Lưu vào mảng tạm
+
+                tbodyNoCmt.innerHTML = '';
+                ideasNoCmt.forEach(idea => {
+                    tbodyNoCmt.innerHTML += `
+                        <tr>
+                            <td>${idea.title}</td>
+                            <td>${idea.user?.name || 'Unknown'}</td>
+                            <td>${new Date(idea.created_at).toLocaleDateString()}</td>
+                            <td>
+                                <a href="idea-detail.html?id=${idea.id}" style="color: var(--primary-color); font-weight: bold; margin-right: 10px; text-decoration: none;">👁️ View</a>
+                                <button class="btn-action" style="background: var(--warning); color: #333; margin-right: 5px;" onclick="openIdeaModal(${idea.id})">Edit</button>
+                                <button class="btn-action btn-delete" onclick="deleteIdeaAdmin(${idea.id}, '${idea.title.replace(/'/g, "\\'")}')">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            // --- 2. LẤY BÁO CÁO: ANONYMOUS IDEAS ---
+            const resAnon = await fetch(`${API_ADMIN_URL}/exceptions/anonymous`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' }
+            });
+            if (resAnon.ok) {
+                const result = await resAnon.json();
+                const ideasAnon = Array.isArray(result) ? result : (result.data || []);
+                exceptionIdeasData.push(...ideasAnon); // Lưu vào mảng tạm
+
+                tbodyAnon.innerHTML = '';
+                ideasAnon.forEach(idea => {
+                    tbodyAnon.innerHTML += `
+                        <tr>
+                            <td>${idea.title}</td>
+                            <td>${new Date(idea.created_at).toLocaleDateString()}</td>
+                            <td style="color: var(--danger); font-family: monospace;">${idea.user?.name || 'Unknown'} (ID: ${idea.user_id})</td>
+                            <td>
+                                <a href="idea-detail.html?id=${idea.id}" style="color: var(--primary-color); font-weight: bold; margin-right: 10px; text-decoration: none;">👁️ View</a>
+                                <button class="btn-action" style="background: var(--warning); color: #333; margin-right: 5px;" onclick="openIdeaModal(${idea.id})">Edit</button>
+                                <button class="btn-action btn-delete" onclick="deleteIdeaAdmin(${idea.id}, '${idea.title.replace(/'/g, "\\'")}')">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+        } catch (error) { 
+            console.error("Lỗi tải reports", error); 
+        }
+    }
+
+    // ==========================================
+    // 6. XUẤT DỮ LIỆU (EXPORT CSV & ZIP)
+    // ==========================================
+    function downloadExport(type) {
+        if (!confirm(`Hệ thống sẽ tải xuống file ${type.toUpperCase()}. Bạn muốn tiếp tục?`)) return;
+        const exportUrl = `${API_ADMIN_URL}/export/${type}?token=${token}`;
+        window.open(exportUrl, '_blank');
+    }
+
+    // ==========================================
+    // 7. KIỂM DUYỆT Ý TƯỞNG (ADMIN IDEAS CRUD)
+    // ==========================================
+    
+    // --- XÓA Ý TƯỞNG ---
+    async function deleteIdeaAdmin(id, title) {
+        if (!confirm(`⚠️ CẢNH BÁO: Bạn có chắc muốn xóa vĩnh viễn ý tưởng "${title}" không?`)) return;
+
+        try {
+            const res = await fetch(`${API_ADMIN_URL}/ideas/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' }
+            });
+
+            if (res.ok) {
+                alert("✅ Đã xóa ý tưởng thành công!");
+                fetchExceptionReports(); // Tải lại bảng Exception
+            } else {
+                const data = await res.json();
+                alert(`❌ Lỗi: ${data.message || 'Không thể xóa ý tưởng này.'}`);
+            }
+        } catch (error) { alert("Lỗi kết nối mạng!"); }
+    }
+
+    // --- ĐÓNG/MỞ MODAL SỬA Ý TƯỞNG ---
+    function openIdeaModal(id) {
+        const idea = exceptionIdeasData.find(i => i.id === id);
+        if (!idea) return alert("Lỗi: Không tìm thấy dữ liệu ý tưởng!");
+
+        document.getElementById('editIdeaId').value = idea.id;
+        document.getElementById('editIdeaTitle').value = idea.title || '';
+        document.getElementById('editIdeaContent').value = idea.content || '';
+        document.getElementById('editIdeaFile').value = ''; // Reset file input
+
+        document.getElementById('ideaEditModal').style.display = 'flex';
+    }
+
+    function closeIdeaModal() {
+        document.getElementById('ideaEditModal').style.display = 'none';
+    }
+
+    // --- LƯU CẬP NHẬT Ý TƯỞNG (CÓ HỖ TRỢ UPLOAD FILE) ---
+    async function saveIdeaAdmin() {
+        const id = document.getElementById('editIdeaId').value;
+        const title = document.getElementById('editIdeaTitle').value;
+        const content = document.getElementById('editIdeaContent').value;
+        const fileInput = document.getElementById('editIdeaFile');
+
+        if (!title.trim() || !content.trim()) {
+            return alert("Vui lòng nhập đủ Tiêu đề và Nội dung!");
+        }
+
+        // PHẢI DÙNG FORMDATA VÌ CÓ CHỨA FILE ĐÍNH KÈM
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('content', content);
+        if (fileInput.files.length > 0) {
+            formData.append('file', fileInput.files[0]);
+        }
+        
+        // 🔥 TRICK LARAVEL: Để gửi file qua API dạng PUT, ta phải dùng POST và ép method là PUT
+        formData.append('_method', 'PUT'); 
+
+        const btn = document.getElementById('btnSaveIdeaAdmin');
+        btn.innerText = 'Đang lưu...'; btn.disabled = true;
+
+        try {
+            const res = await fetch(`${API_ADMIN_URL}/ideas/${id}`, {
+                method: 'POST', // Chú ý: Dùng POST thay vì PUT
+                headers: { 
+                    'Authorization': `Bearer ${token}`, 
+                    'Accept': 'application/json',
+                    'ngrok-skip-browser-warning': 'true'
+                    // LƯU Ý: Tuyệt đối không set 'Content-Type' khi dùng FormData, trình duyệt sẽ tự gắn boundary
+                },
+                body: formData 
+            });
+
+            if (res.ok) {
+                alert("✅ Đã cập nhật ý tưởng toàn diện thành công!");
+                closeIdeaModal();
+                fetchExceptionReports(); // Load lại bảng
+            } else {
+                const data = await res.json();
+                alert(`❌ Lỗi: ${data.message || 'Cập nhật thất bại.'}`);
+            }
+        } catch (error) { 
+            alert("Lỗi kết nối mạng!"); 
+        } finally {
+            btn.innerText = 'Save Changes'; btn.disabled = false;
+        }
+    }
+</script>
+</body>
+</html>

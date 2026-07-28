@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - UniIdeas Portal</title>
+    <style>
+        :root {
+            --primary-color: #0056b3;
+            --primary-hover: #004494;
+            --bg-color: #e9ecef;
+            --text-main: #333333;
+            --text-muted: #666666;
+            --white: #ffffff;
+            --border-color: #cccccc;
+            --focus-ring: rgba(0, 86, 179, 0.25);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .login-container { background-color: var(--white); width: 100%; max-width: 400px; padding: 2.5rem; border-radius: 10px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
+        .login-header { text-align: center; margin-bottom: 2rem; }
+        .login-header h1 { color: var(--primary-color); font-size: 1.8rem; margin-bottom: 0.5rem; }
+        .login-header p { color: var(--text-muted); font-size: 0.95rem; }
+        
+        .form-group { margin-bottom: 1.2rem; position: relative; }
+        .form-group label { display: block; font-size: 0.9rem; font-weight: 600; margin-bottom: 0.4rem; color: var(--text-main); }
+        .form-control { width: 100%; padding: 0.8rem; font-size: 1rem; border: 1px solid var(--border-color); border-radius: 5px; transition: border-color 0.2s, box-shadow 0.2s; }
+        .form-control:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px var(--focus-ring); }
+        
+        .toggle-password { position: absolute; right: 10px; top: 35px; background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 1rem; padding: 0 5px; }
+        
+        .btn-login { width: 100%; padding: 0.8rem; background-color: var(--primary-color); color: var(--white); border: none; border-radius: 5px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background-color 0.2s; }
+        .btn-login:hover { background-color: var(--primary-hover); }
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <div class="login-header">
+            <h1>UniIdeas Portal</h1>
+            <p>Sign in to share your innovative ideas</p>
+        </div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email">University Email</label>
+                <input type="email" id="email" class="form-control" placeholder="e.g., staff@university.edu" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" class="form-control" placeholder="Enter your password" required>
+                <button type="button" class="toggle-password" id="togglePassword" aria-label="Toggle password visibility">👁️</button>
+            </div>
+
+            <button type="submit" class="btn-login">Sign In</button>
+        </form>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const togglePasswordBtn = document.getElementById('togglePassword');
+            const passwordInput = document.getElementById('password');
+            const loginForm = document.getElementById('loginForm');
+            const emailInput = document.getElementById('email');
+
+            // Ẩn/Hiện mật khẩu
+            togglePasswordBtn.addEventListener('click', () => {
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+                togglePasswordBtn.innerText = type === 'password' ? '👁️' : '🚫';
+            });
+
+           // Xử lý khi nhấn nút Đăng nhập
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault(); 
+
+                const email = emailInput.value;
+                const password = passwordInput.value;
+                const btnSubmit = document.querySelector('.btn-login');
+
+                // 1. CHẾ ĐỘ MOCK AUTH (Dành cho lúc chưa có Backend hoặc test nhanh)
+                if (email === 'admin@uni.edu' && password === '123456') {
+                    localStorage.setItem('userToken', 'mock-admin-token');
+                    localStorage.setItem('userRole', 'admin'); // Phải lưu role ở đây!
+                    alert("Welcome QA Manager (Mock Mode)!");
+                    window.location.href = 'index.html';
+                    return;
+                } 
+
+                // 2. CHẾ ĐỘ API AUTH (Gọi lên Server thật)
+                btnSubmit.innerText = "⏳ Processing...";
+                btnSubmit.disabled = true;
+
+                try {
+                    const response = await fetch('https://nontubercularly-nontextural-abdul.ngrok-free.dev/api/login', {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'ngrok-skip-browser-warning': 'true' 
+                        },
+                        body: JSON.stringify({ email: email, password: password })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        // Lấy token (Backend đang để token ở ngay lớp ngoài cùng)
+                        localStorage.setItem('userToken', data.token); 
+                        
+                        // 🔥 LOGIC MỚI: Đi theo đúng đường dẫn data -> data -> role -> name
+                        const roleFromServer = data.data?.role?.name || 'Staff';
+                        
+                        localStorage.setItem('userRole', roleFromServer);
+                        
+                        alert("Đăng nhập thành công với quyền: " + roleFromServer);
+                        window.location.href = 'index.html'; 
+                    
+                     
+                    } else {
+                        alert("Đăng nhập thất bại: " + (data.message || "Sai thông tin!"));
+                    }
+                } catch (error) {
+                    console.error("Lỗi:", error);
+                    alert("Không thể kết nối đến server.");
+                } finally {
+                    btnSubmit.innerText = "Sign In";
+                    btnSubmit.disabled = false;
+                }
+            });
+        });
+    </script>
+    <script src="auth.js"></script>
+</body>
+</html>

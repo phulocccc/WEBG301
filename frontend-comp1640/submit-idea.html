@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submit New Idea - UniIdeas</title>
+    <style>
+        /* Tái sử dụng CSS cơ bản */
+        :root {
+            --primary-color: #0056b3;
+            --bg-color: #f4f7f6;
+            --text-main: #333333;
+            --white: #ffffff;
+            --border-color: #dddddd;
+            --danger: #dc3545;
+            --text-muted: #666666;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); }
+        header { background-color: var(--primary-color); color: var(--white); padding: 1rem 5%; display: flex; justify-content: space-between; align-items: center;}
+        
+        .container { max-width: 700px; margin: 2rem auto; padding: 2rem; background: var(--white); border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        
+        h2 { margin-bottom: 1.5rem; text-align: center; }
+
+        /* Form Styling */
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 0.5rem; }
+        .form-group input[type="text"], 
+        .form-group select, 
+        .form-group textarea {
+            width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 4px; font-size: 1rem;
+        }
+        .form-group textarea { resize: vertical; min-height: 150px; }
+        
+        /* File Upload */
+        .file-upload { border: 2px dashed var(--border-color); padding: 2rem; text-align: center; border-radius: 4px; background: #fafafa; cursor: pointer; }
+        
+        /* Terms and conditions */
+        .terms { background: #f8f9fa; padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem; font-size: 0.9rem; border: 1px solid var(--border-color); }
+        .checkbox-group { display: flex; align-items: flex-start; gap: 0.5rem; margin-bottom: 1.5rem; }
+        
+        .btn-submit { width: 100%; padding: 1rem; background: var(--primary-color); color: white; border: none; border-radius: 4px; font-size: 1.1rem; font-weight: bold; cursor: pointer; }
+        .btn-submit:hover { background: #004494; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h2 style="margin: 0; cursor: pointer;" onclick="window.location.href='index.html'">UniIdeas Portal</h2>
+        <div>
+            <button id="btnLogout" style="background-color: var(--danger); color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-weight: bold;">LOG OUT</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <h2>Submit a New Idea</h2>
+        
+        <form id="ideaForm" action="/api/submit-idea" method="POST" enctype="multipart/form-data">
+            
+            <div class="form-group">
+                <label for="title">Idea Title (Tên ý tưởng)</label>
+                <input type="text" id="title" name="title" required placeholder="E.g., Upgrade Library Computers">
+            </div>
+
+            <div class="form-group">
+                <label for="content">Idea Details (Nội dung chi tiết)</label>
+                <textarea id="content" name="content" required placeholder="Describe your idea, benefits, and implementation steps..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="categoryId">Category (Phân loại)</label>
+                <select id="categoryId" name="category_id" required>
+                    <option value="">Đang tải danh mục...</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Supporting Documents (Tài liệu đính kèm - Tùy chọn)</label>
+                <div class="file-upload">
+                    <input type="file" id="attachment" name="file_path" accept=".pdf,.doc,.docx,.jpg,.png" multiple>
+                    <p style="margin-top: 0.5rem; color: var(--text-muted); font-size: 0.85rem;">Max size: 10MB. Formats: PDF, DOCX, JPG, PNG</p>
+                </div>
+            </div>
+
+            <div class="terms">
+                <strong>Terms and Conditions:</strong> By submitting this idea, you agree that it adheres to the University's code of conduct. Inappropriate content will be investigated.
+            </div>
+
+            <div class="checkbox-group">
+                <input type="checkbox" id="agree_terms" required>
+                <label for="agree_terms">I agree to the Terms and Conditions</label>
+            </div>
+
+            <div class="checkbox-group">
+                <input type="checkbox" id="is_anonymous">
+                <label for="is_anonymous">Submit Anonymously (Tác giả sẽ ẩn danh trên giao diện)</label>
+            </div>
+
+            <button type="submit" class="btn-submit">Submit Idea</button>
+        </form>
+    </div>
+
+<script src="auth.js"></script>
+<script>
+    const API_BASE_URL = 'https://nontubercularly-nontextural-abdul.ngrok-free.dev/api';
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        fetchCategoriesForDropdown();
+
+        const form = document.getElementById('ideaForm');
+        const fileInput = document.getElementById('attachment');
+        const anonymousCheckbox = document.getElementById('is_anonymous');
+
+        if (form) {
+            form.addEventListener('submit', async function(event) {
+                event.preventDefault(); 
+
+                let isValid = true;
+                let errorMessage = "";
+
+                // Validate File
+                if (fileInput.files.length > 0) {
+                    const fileSize = fileInput.files[0].size / 1024 / 1024; 
+                    if (fileSize > 10) {
+                        errorMessage += "❌ File đính kèm quá lớn. Vui lòng chọn file dưới 10MB.\n";
+                        isValid = false;
+                    }
+                }
+
+                if (!isValid) {
+                    alert("Vui lòng kiểm tra lại thông tin:\n\n" + errorMessage);
+                    return; 
+                }
+
+                // Chuẩn bị dữ liệu
+                const formData = new FormData(form);
+                
+                if (anonymousCheckbox.checked) {
+                    formData.set('is_anonymous', 1);
+                } else {
+                    formData.set('is_anonymous', 0);
+                }
+
+                if (fileInput.files.length > 0) {
+                    for (let i = 0; i < fileInput.files.length; i++) {
+                        formData.append('files[]', fileInput.files[i]); 
+                    }
+                }
+
+                const token = localStorage.getItem('userToken');
+                if (!token) {
+                    alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/ideas`, {
+                        method: 'POST',
+                        headers: { 
+                            'Authorization': `Bearer ${token}`, 
+                            'Accept': 'application/json',
+                            'ngrok-skip-browser-warning': 'true'
+                        },
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        if (response.status === 500) {
+                            alert("❌ Lỗi 500 từ Server. Backend đang bị crash khi nhận file hoặc dữ liệu của bạn.");
+                        } else {
+                            alert(`❌ Không thể đăng bài! Mã lỗi: ${response.status}`);
+                        }
+                        return;
+                    }
+
+                    alert("✅ Nộp ý tưởng thành công! Hệ thống đang xử lý...");
+                    window.location.href = "index.html"; 
+
+                } catch (error) {
+                    console.error("Lỗi:", error);
+                    alert("Không thể kết nối đến máy chủ. Hãy kiểm tra lại link API Ngrok.");
+                }
+            });
+        }
+    });
+
+    // HÀM LẤY DANH MỤC ĐỘNG TỪ API (Đã sửa lỗi cấu trúc và URL)
+async function fetchCategoriesForDropdown() {
+    const token = localStorage.getItem('userToken');
+    const categorySelect = document.getElementById('categoryId');
+    
+    try {
+        // CHÚ Ý: Đã đổi thành gọi route admin/categories giống bên trang Admin Dashboard
+        // Nếu Backend của bạn có route riêng là /api/categories thì hãy xóa chữ /admin đi nhé
+        const response = await fetch(`${API_BASE_URL}/categories`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            }
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            
+            // Xử lý trích xuất mảng dữ liệu siêu an toàn (chống lỗi do Laravel bọc data)
+            let categories = [];
+            if (Array.isArray(result)) {
+                categories = result;
+            } else if (result && Array.isArray(result.data)) {
+                categories = result.data;
+            } else if (result && result.data && Array.isArray(result.data.data)) {
+                categories = result.data.data;
+            }
+            
+            categorySelect.innerHTML = '<option value="">-- Vui lòng chọn danh mục --</option>';
+            
+            if (categories.length === 0) {
+                categorySelect.innerHTML = '<option value="">(Hệ thống chưa có danh mục nào)</option>';
+                return;
+            }
+
+            // Tiến hành in danh mục ra giao diện
+            categories.forEach(cat => {
+                categorySelect.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
+            });
+
+        } else {
+            console.error("Lỗi API Trạng thái:", response.status);
+            categorySelect.innerHTML = `<option value="">❌ Lỗi API (Code: ${response.status})</option>`;
+        }
+    } catch (error) {
+        console.error("Lỗi Fetch Categories:", error);
+        categorySelect.innerHTML = '<option value="">❌ Lỗi kết nối mạng / Ngrok!</option>';
+    }
+}
+</script>
+
+</body>
+</html>
