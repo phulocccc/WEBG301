@@ -255,28 +255,26 @@
 <script src="auth.js"></script>
 
 <script>
-    const API_ADMIN_URL = 'https://nontubercularly-nontextural-abdul.ngrok-free.dev/api/admin';
+    const API_ADMIN_URL = 'https://mmideas.infinityfree.me/api/admin';
     const token = localStorage.getItem('userToken');
 
-    // === KHỞI CHẠY LÚC TẢI TRANG ===
-    // === KHỞI CHẠY LÚC TẢI TRANG ===
+
 document.addEventListener('DOMContentLoaded', () => {
     // 1. KIỂM TRA ROLE ĐỂ ẨN/HIỆN CHỨC NĂNG
     const userRole = localStorage.getItem('userRole'); 
     
-    // Giả sử Role Admin có ID là '1' hoặc tên là 'admin'
-    // Nếu role KHÔNG PHẢI là Admin, ta ẩn phần quản lý User đi
+
     if (userRole !== '1' && userRole?.toLowerCase() !== 'admin') {
         const userSection = document.getElementById('userManagementSection');
         if (userSection) {
-            userSection.style.display = 'none'; // Ẩn hoàn toàn khỏi giao diện
+            userSection.style.display = 'none'; 
         }
     } else {
-        // Chỉ tải dữ liệu User nếu đúng là Admin
+
         fetchUsers();
     }
 
-    // Các hàm tải dữ liệu khác (dành cho mọi role được phép vào dashboard)
+
     fetchStatistics();
     fetchChartData(); 
     fetchCategories();
@@ -483,7 +481,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const tbody = document.getElementById('categories-table-body');
         
         try {
-            // 🔥 ĐÃ SỬA: Loại bỏ chữ /admin ra khỏi đường dẫn API giống hệt trang chủ
+
             const baseUrl = API_ADMIN_URL.replace('/admin', ''); 
             
             const res = await fetch(`${baseUrl}/categories`, {
@@ -493,7 +491,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (res.ok) {
                 const result = await res.json();
                 
-                // Trích xuất mảng dữ liệu an toàn
                 let categories = [];
                 if (Array.isArray(result)) {
                     categories = result;
@@ -527,7 +524,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     `;
                 });
             } else {
-                // 🔥 NÂNG CẤP: Nếu API lỗi, báo đỏ ra màn hình luôn để dễ bắt đền Backend
                 tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: red; font-weight: bold;">❌ Lỗi tải dữ liệu (Mã lỗi: ${res.status}). Vui lòng check lại API Backend!</td></tr>`;
             }
         } catch (error) { 
@@ -574,11 +570,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // 5. BÁO CÁO NGOẠI LỆ (EXCEPTION REPORTS)
     // ==========================================
-    let exceptionIdeasData = []; // Mảng lưu trữ tạm để khi bấm Edit sẽ có data điền vào form
+    let exceptionIdeasData = []; 
 
     async function fetchExceptionReports() {
         try {
-            exceptionIdeasData = []; // Reset mảng mỗi lần tải
+            exceptionIdeasData = []; 
             
             const tbodyNoCmt = document.getElementById('no-comments-table-body');
             const tbodyAnon = document.getElementById('anonymous-table-body');
@@ -593,7 +589,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (resNoCmt.ok) {
                 const result = await resNoCmt.json();
                 const ideasNoCmt = Array.isArray(result) ? result : (result.data || []);
-                exceptionIdeasData.push(...ideasNoCmt); // Lưu vào mảng tạm
+                exceptionIdeasData.push(...ideasNoCmt);
 
                 tbodyNoCmt.innerHTML = '';
                 ideasNoCmt.forEach(idea => {
@@ -619,7 +615,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (resAnon.ok) {
                 const result = await resAnon.json();
                 const ideasAnon = Array.isArray(result) ? result : (result.data || []);
-                exceptionIdeasData.push(...ideasAnon); // Lưu vào mảng tạm
+                exceptionIdeasData.push(...ideasAnon); 
 
                 tbodyAnon.innerHTML = '';
                 ideasAnon.forEach(idea => {
@@ -667,7 +663,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (res.ok) {
                 alert("✅ Đã xóa ý tưởng thành công!");
-                fetchExceptionReports(); // Tải lại bảng Exception
+                fetchExceptionReports();
             } else {
                 const data = await res.json();
                 alert(`❌ Lỗi: ${data.message || 'Không thể xóa ý tưởng này.'}`);
@@ -683,7 +679,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('editIdeaId').value = idea.id;
         document.getElementById('editIdeaTitle').value = idea.title || '';
         document.getElementById('editIdeaContent').value = idea.content || '';
-        document.getElementById('editIdeaFile').value = ''; // Reset file input
+        document.getElementById('editIdeaFile').value = ''; 
 
         document.getElementById('ideaEditModal').style.display = 'flex';
     }
@@ -711,7 +707,6 @@ document.addEventListener('DOMContentLoaded', () => {
             formData.append('file', fileInput.files[0]);
         }
         
-        // 🔥 TRICK LARAVEL: Để gửi file qua API dạng PUT, ta phải dùng POST và ép method là PUT
         formData.append('_method', 'PUT'); 
 
         const btn = document.getElementById('btnSaveIdeaAdmin');
@@ -719,12 +714,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const res = await fetch(`${API_ADMIN_URL}/ideas/${id}`, {
-                method: 'POST', // Chú ý: Dùng POST thay vì PUT
+                method: 'POST', 
                 headers: { 
                     'Authorization': `Bearer ${token}`, 
                     'Accept': 'application/json',
                     'ngrok-skip-browser-warning': 'true'
-                    // LƯU Ý: Tuyệt đối không set 'Content-Type' khi dùng FormData, trình duyệt sẽ tự gắn boundary
                 },
                 body: formData 
             });
@@ -732,7 +726,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (res.ok) {
                 alert("✅ Đã cập nhật ý tưởng toàn diện thành công!");
                 closeIdeaModal();
-                fetchExceptionReports(); // Load lại bảng
+                fetchExceptionReports(); 
             } else {
                 const data = await res.json();
                 alert(`❌ Lỗi: ${data.message || 'Cập nhật thất bại.'}`);

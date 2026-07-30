@@ -114,7 +114,7 @@
     let currentPage = 1;
     let currentSort = 'latest';
     let currentCategory = 'all';
-    const API_BASE_URL = 'https://nontubercularly-nontextural-abdul.ngrok-free.dev/api';
+    const API_BASE_URL = 'https://mmideas.infinityfree.me/api';
 
     // === KHỞI CHẠY KHI TẢI TRANG ===
     document.addEventListener('DOMContentLoaded', () => {
@@ -152,18 +152,17 @@
         }
 
         setupSortFilters(); 
-        fetchCategoriesForSidebar(); // Lấy danh mục động cho bộ lọc
+        fetchCategoriesForSidebar(); 
         fetchIdeasFromBackend();
         setupNotifications(); 
     });
 
-    // === LẤY DANH MỤC ĐỘNG CHO THANH SIDEBAR TỪ API (Đã sửa lỗi) ===
+    // === LẤY DANH MỤC ĐỘNG CHO THANH SIDEBAR TỪ API  ===
 async function fetchCategoriesForSidebar() {
     const token = localStorage.getItem('userToken');
     const categoryGroup = document.getElementById('categoryGroup');
     
     try {
-        // CHÚ Ý: Đã đổi thành gọi route admin/categories giống trang Submit lúc nãy
         const response = await fetch(`${API_BASE_URL}/categories`, {
             method: 'GET',
             headers: {
@@ -176,7 +175,6 @@ async function fetchCategoriesForSidebar() {
         if (response.ok) {
             const result = await response.json();
             
-            // Xử lý trích xuất mảng dữ liệu siêu an toàn 
             let categories = [];
             if (Array.isArray(result)) {
                 categories = result;
@@ -186,14 +184,12 @@ async function fetchCategoriesForSidebar() {
                 categories = result.data.data;
             }
             
-            // Giữ lại nút All, sau đó render tiếp các nút từ API
             categoryGroup.innerHTML = `<button data-category="all" class="active">All Categories</button>`;
             
             categories.forEach(cat => {
                 categoryGroup.innerHTML += `<button data-category="${cat.id}">${cat.name}</button>`;
             });
 
-            // Chạy hàm gắn sự kiện click cho các nút Category mới vẽ ra
             setupCategoryFilters();
         } else {
             console.error("Lỗi tải category API. Code:", response.status);
@@ -204,7 +200,6 @@ async function fetchCategoriesForSidebar() {
     }
 }
 
-    // Gắn sự kiện filter cho nhóm Sort By
     function setupSortFilters() {
         document.querySelectorAll('#sortGroup button').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -217,7 +212,6 @@ async function fetchCategoriesForSidebar() {
         });
     }
 
-    // Gắn sự kiện filter cho nhóm Category (Chạy sau khi đã load API)
    function setupCategoryFilters() {
         document.querySelectorAll('#categoryGroup button').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -379,19 +373,15 @@ async function fetchCategoriesForSidebar() {
             }
         }
 
-        // 🔥 BƯỚC 1: LỌC THEO CATEGORY (Bao trọn mọi định dạng Backend)
         let filteredIdeas = allIdeasFromServer;
         if (currentCategory !== 'all') {
             filteredIdeas = allIdeasFromServer.filter(idea => {
-                // TH1: Bài viết có nhiều danh mục (Mảng categories)
                 if (idea.categories && Array.isArray(idea.categories)) {
                     return idea.categories.some(cat => cat.id.toString() === currentCategory.toString());
                 }
-                // TH2: Bài viết lưu thẳng category_id
                 if (idea.category_id && idea.category_id.toString() === currentCategory.toString()) {
                     return true;
                 }
-                // TH3: Bài viết trả về 1 object category
                 if (idea.category && idea.category.id && idea.category.id.toString() === currentCategory.toString()) {
                     return true;
                 }
@@ -440,7 +430,6 @@ async function fetchCategoriesForSidebar() {
             article.classList.add('idea-card');
             
             let attachmentHTML = '';
-            // Đã cập nhật tự động lấy domain
             const backendDomain = API_BASE_URL.replace('/api', '');
 
             if (idea.file_path) {
@@ -464,15 +453,12 @@ async function fetchCategoriesForSidebar() {
                     </div>`;
             }
 
-            // 🔥 ĐÃ SỬA LẠI: Chỉ hiển thị đúng 1 danh mục (Loại bỏ các danh mục thừa do Backend gửi)
             let categoryDisplay = 'Chưa phân loại';
             if (idea.categories && idea.categories.length > 0) {
                 if (currentCategory !== 'all') {
-                    // Nếu user đang bấm lọc ở Sidebar, ưu tiên hiển thị đúng cái tên đang lọc
                     const matchedCat = idea.categories.find(cat => cat.id.toString() === currentCategory.toString());
                     categoryDisplay = matchedCat ? matchedCat.name : idea.categories[0].name;
                 } else {
-                    // Nếu ở mục All Categories, chỉ hiện cái tag đầu tiên của bài viết
                     categoryDisplay = idea.categories[0].name;
                 }
             } else if (idea.category && idea.category.name) {

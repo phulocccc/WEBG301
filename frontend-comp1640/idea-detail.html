@@ -107,28 +107,24 @@
     const ideaId = urlParams.get('id');
     const token = localStorage.getItem('userToken');
 
-    // Nếu lọt vào trang mà không có ID (ví dụ gõ chay link) -> Đá về trang chủ
     if (!ideaId) {
         window.location.href = 'index.html';
     }
 
-    const API_BASE_URL = 'https://nontubercularly-nontextural-abdul.ngrok-free.dev/api';
+    const API_BASE_URL = 'https://mmideas.infinityfree.me/api';
 
-    // Chạy các hàm ngay khi web load xong
     document.addEventListener('DOMContentLoaded', () => {
-        incrementViewCount();      // Bí mật tăng 1 view
-        checkFinalClosureDate();   // Kiểm tra xem còn được bình luận không
-        fetchIdeaDetails();        // Kéo dữ liệu về vẽ lên web
+        incrementViewCount();     
+        checkFinalClosureDate();  
+        fetchIdeaDetails();       
     });
 
     // ==========================================
     // 2. CÁC HÀM XỬ LÝ LOGIC NGẦM
     // ==========================================
     
-    // Kiểm tra Hạn chót Bình luận (Final Closure Date)
     function checkFinalClosureDate() {
         const commentForm = document.getElementById('commentFormContainer');
-        // Giả sử ngày đóng bình luận CUỐI CÙNG là 15/05/2026
         const finalClosureDate = new Date('2026-05-15T23:59:59'); 
         
         if (new Date() > finalClosureDate) {
@@ -141,7 +137,6 @@
         }
     }
 
-    // Tự động tăng lượt xem
     async function incrementViewCount() {
         if (!token) return;
         try {
@@ -206,11 +201,9 @@
                 let cleanPath = file.file_path.replace(/\\/g, '/');
                 let fullFileUrl = '';
 
-                // 1. Kiểm tra: Nếu Backend lỡ trả về nguyên cái link http://... thì dùng luôn, khỏi nối
                 if (cleanPath.startsWith('http')) {
                     fullFileUrl = cleanPath;
                 } else {
-                    // 2. Logic bù chữ /storage/ nếu Backend trả về thiếu
                     if (!cleanPath.startsWith('/storage/') && !cleanPath.startsWith('storage/')) {
                         if (cleanPath.startsWith('/')) cleanPath = '/storage' + cleanPath;
                         else cleanPath = '/storage/' + cleanPath;
@@ -220,12 +213,10 @@
                     fullFileUrl = backendDomain + cleanPath;
                 }
 
-                // 🔥 IN ĐƯỜNG DẪN RA CONSOLE ĐỂ "HỎI TỘI" BACKEND
                 console.log("🔍 Tên file:", file.file_name);
                 console.log("🔗 Đang cố tải ảnh từ link này:", fullFileUrl);
 
                 if(file.file_name.match(/\.(jpeg|jpg|gif|png)$/i)) {
-                    // Mình đã đổi chữ báo lỗi để bạn biết chắc chắn là do Server
                     attachmentsHTML += `<img src="${fullFileUrl}" title="${fullFileUrl}" style="max-width: 100%; max-height: 400px; border-radius: 8px; border: 1px solid #ddd; object-fit: contain;" onerror="this.src='https://placehold.co/400x300?text=Lỗi+404:+Ảnh+không+tồn+tại+trên+Server'">`;
                 } else {
                     attachmentsHTML += `<a href="${fullFileUrl}" target="_blank" style="padding: 10px 15px; background: #e9ecef; border-radius: 5px; text-decoration: none; color: #333; font-weight: bold;">📄 ${file.file_name}</a>`;
@@ -297,7 +288,6 @@
             return;
         }
 
-        // Tạm đổi text nút để user không bấm 2 lần
         const submitBtn = document.querySelector('.btn-submit');
         submitBtn.innerHTML = "⏳ Đang gửi...";
         submitBtn.disabled = true;
@@ -345,7 +335,7 @@
             });
 
             if (response.ok) {
-                fetchIdeaDetails(); // Load lại để update số đếm
+                fetchIdeaDetails();
             } else {
                 const data = await response.json();
                 alert(data.message || "⚠️ Bạn đã thực hiện vote cho bài viết này rồi!");
